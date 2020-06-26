@@ -23,12 +23,12 @@ class Env(gym.Env):
         self.world = World(self.n_agents, self.n_cities, self.steps, self.conn,
                            self.tasks, self.cities, self.rewards, self.destinations,
                            self.budget)
-        self.budget = self.get_budget()
+        self.remain_budget = self.get_budget()
         self.terminal = self.steps
         self.last_pick = [-1] * self.world.n_cities
 
     def step(self, action):
-        self.budget = self.get_budget()
+        self.remain_budget = self.get_budget()
         if not self.check():
             self.close()
             # return -1 to stop iteration
@@ -38,9 +38,16 @@ class Env(gym.Env):
         for i in range(self.world.n_agents):
             if action[i][0] == 1 and self.last_pick[action[i][1]] != -1:
                 rewards[i] = -self.last_pick[action[i][1]]
+        # try:
         for i in range(self.world.n_agents):
             rewards[i] += self.world.agents[i].step(action[i], self.world.cities[action[i][1]],
                                                     action[i][1], self.steps_done)
+        # except IndexError:
+        #     print(rewards, "\n")
+        #     print(self.world.agents, "\n")
+        #     print(action, "\n")
+        #     print(self.world.cities, "\n")
+
         for i in range(len(rewards)):
             rewards[i] = torch.tensor([rewards[i]], dtype=torch.float)
 
@@ -53,7 +60,9 @@ class Env(gym.Env):
         self.world = World(self.n_agents, self.n_cities, self.steps, self.conn,
                            self.tasks, self.cities, self.rewards, self.destinations,
                            self.budget)
-        self.budget = self.get_budget()
+        self.remain_budget = self.get_budget()
+
+
 
     def render(self, mode='human'):
         pass
@@ -65,7 +74,7 @@ class Env(gym.Env):
         return budget
 
     def check(self):
-        return True if self.steps_done < self.terminal and self.budget != 0 \
+        return True if self.steps_done < self.terminal and self.remain_budget != 0 \
             else False
 
     def input(self):
@@ -81,3 +90,4 @@ class Env(gym.Env):
             ipt = torch.cat(ipt)
             x.append(ipt)
         return torch.cat(x)
+

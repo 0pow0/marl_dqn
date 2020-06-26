@@ -32,6 +32,8 @@ def main():
               "+----------------------------------------------+\n".format(trainer.idx_env))
         for epoch in tqdm(range(args.epochs)):
             epoch_reward = 0.0
+            trainer.optimizer.zero_grad()
+
             for step in range(args.steps):
                 transitions = trainer.step()
                 if transitions == "done":
@@ -40,9 +42,18 @@ def main():
                 memory.push_all(transitions)
             # passed all time-steps and reset
             trainer.env.reset()
-            samples = memory.sample(args.batch_size)
-            # TODO: calc maxQ(s_t+1) then calc loss
-
+            if epoch % 10 == 0:
+                samples = memory.sample(args.batch_size)
+                # print("\n")
+                # print(samples)
+                # calc maxQ(s_t+1) then calc loss
+                loss = trainer.calc_loss(samples)
+                loss.backward()
+                # for param in trainer.DQN.parameters():
+                #     param.grad.data.clamp_(-1, 1)
+                trainer.optimizer.step()
+            # if epoch % 100 == 0:
+                print("\n Epoch: {0} reward: {1} loss: {2}\n".format(epoch, epoch_reward, loss.float()))
 
 
 

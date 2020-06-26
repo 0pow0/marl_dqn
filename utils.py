@@ -22,7 +22,7 @@ def arg_parser():
     parser.add_argument("--len_dataset", help="number of envs", required=True, type=int)
     parser.add_argument("--gamma", help="target=reward+gamma*Q_t+1", required=True, type=float)
     parser.add_argument("--lr", required=True, type=float)
-    parser.add_argument("--batch_size", required=True, type=bool)
+    parser.add_argument("--batch_size", required=True, type=int)
     parser.add_argument("--budget", required=True, type=int)
     parser.add_argument("--eps_start", help="initial epsilon and will decay toward eps_end", required=True, type=float)
     parser.add_argument("--eps_end", help="end epsilon", required=True, type=float)

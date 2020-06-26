@@ -16,8 +16,8 @@ class Trainer(object):
         self.device = device
 
         self.args = args
-        self.Encoder = Encoder(K=args.steps, M=self.n_cities, L=args.len_encoder).cuda(self.device)
-        self.DQN = DQN(N=self.n_agents, K=args.steps, L=args.len_encoder, M=n_cities).cuda(self.device)
+        self.Encoder = Encoder(K=args.steps, M=self.n_cities, L=args.len_encoder).to(self.device)
+        self.DQN = DQN(N=self.n_agents, K=args.steps, L=args.len_encoder, M=n_cities).to(self.device)
 
         self.data_loader = data_loader
         self.iter_data = iter(data_loader)
@@ -30,7 +30,44 @@ class Trainer(object):
         self.EPS_DECAY = self.args.eps_decay
 
         self.criterion = nn.MSELoss()
-        self.optimizer = torch.optim.Adam(self.DQN.parameters(), lr=args.lr)
+        self.optimizer = torch.optim.RMSprop(self.DQN.parameters(), lr=args.lr)
+
+    def calc_loss(self, samples):
+        self.DQN.train()
+        states = []
+        next_states = []
+
+        for sample in samples:
+            states.append(sample.state.reshape(1, -1))
+            next_states.append(sample.next_state.reshape(1, -1))
+
+        states = torch.cat(states)
+        next_states = torch.cat(next_states)
+
+        # add one dim at 1 (batch_size, 1, state)
+        states = states.unsqueeze(1)
+        next_states = next_states.unsqueeze(1)
+
+        with torch.enable_grad():
+            Q = self.DQN(states)
+            Q_next = self.DQN(next_states)
+
+        temp_Q = []
+        temp_Q_next = []
+
+        for i in range(len(samples)):
+            action = samples[i].action
+            reward = samples[i].reward.to(self.device)
+            action_idx = action[0]*self.n_cities + action[1]
+
+            temp_Q.append(Q[i][action_idx].reshape(1))
+            temp_Q_next.append((Q_next[i].max() * self.args.gamma + reward).reshape(1).cuda(self.device))
+
+        Q = torch.cat(temp_Q).float().cuda(self.device)
+        Q_next = torch.cat(temp_Q_next).float().cuda(self.device)
+
+        loss = self.criterion(Q, Q_next)
+        return loss
 
     def gen_env(self):
         data = next(self.iter_data)
@@ -52,7 +89,7 @@ class Trainer(object):
                     q = self.DQN(state[i].reshape(1, 1, -1)).reshape(2, -1).max(1)
                     if q[0][0] > q[0][1]:
                         action = torch.tensor([0], device=self.device, requires_grad=False)
-                        action = torch.cat((action, q[0][1].reshape(1,).long()))
+                        action = torch.cat((action, q[1][0].reshape(1,).long()))
                     else:
                         action = torch.tensor([1], device=self.device, requires_grad=False)
                         action = torch.cat((action, q[1][1].reshape(1,).long()))
