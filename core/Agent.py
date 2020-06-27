@@ -32,9 +32,11 @@ class Agent(object):
             reward = 0
             self.history[0][step][city_idx] = 1
         else:
-            reward = self.reward[0][city_idx]
+            reward = self.reward[0][city_idx].clone()
             self.history[1][step][city_idx] = 1
+            self.reward[0][city_idx] = 0
         self.task = go_city.conn.reshape(1, -1)
+        self.at_city = go_city
         return reward
 
     def input_(self):
