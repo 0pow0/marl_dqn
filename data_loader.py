@@ -11,7 +11,7 @@ def data_loader(n, conn_path, task_path, cities_path, reward_path, destination_p
 
 
 class MADataset(Dataset):
-    def __init__(self, n, connectivity_path, task_path, cities_path, reward_path, destination_path):
+    def __init__(self, n, connectivity_path, task_path, cities_path, reward_path, destination_path, start_idx=None):
         self.n = n
         self.conn_path = connectivity_path
         self.task_path = task_path
@@ -24,7 +24,10 @@ class MADataset(Dataset):
         self.rewards = []
         self.destinations = []
         self.init_dest = []
-        self.load()
+        if start_idx is None:
+            self.load()
+        else:
+            self.load_after(idx=start_idx)
 
     def __len__(self):
         return self.n
@@ -38,6 +41,14 @@ class MADataset(Dataset):
 
     def load(self):
         for i in range(self.n):
+            self.conn.append(np.load(self.conn_path + "connectivity_" + str(i) + ".npy"))
+            self.tasks.append(np.load(self.task_path + "agent_all_" + str(i) + ".npy"))
+            self.cities.append(np.load(self.cities_path + "task_" + str(i) + ".npy"))
+            self.rewards.append(np.load(self.rewards_path + "reward_" + str(i) + ".npy"))
+            self.destinations.append(np.load(self.destination_path + "destination_" + str(i) + ".npy"))
+
+    def load_after(self, idx):
+        for i in range(idx, idx+self.n+1):
             self.conn.append(np.load(self.conn_path + "connectivity_" + str(i) + ".npy"))
             self.tasks.append(np.load(self.task_path + "agent_all_" + str(i) + ".npy"))
             self.cities.append(np.load(self.cities_path + "task_" + str(i) + ".npy"))

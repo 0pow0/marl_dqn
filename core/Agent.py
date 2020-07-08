@@ -27,7 +27,7 @@ class Agent(object):
         if self.task[0][city_idx] == -1:
             return 0
 
-        self.budget -= 1
+        self.budget -= self.task[0][city_idx]
         if action[0] == 0:
             reward = 0
             self.history[0][step][city_idx] = 1

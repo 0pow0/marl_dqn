@@ -60,7 +60,7 @@ class Trainer(object):
                        rewards=data["rewards"], destinations=data["destinations"],
                        budget=self.args.budget)
 
-    def select_action(self, state):
+    def select_action(self, state, need_eps=True):
         eps_threshold = self.EPS_END + (self.EPS_START - self.EPS_END) * \
                         math.exp(-1. * self.env.steps_done / self.EPS_DECAY)
         actions = []
@@ -69,9 +69,13 @@ class Trainer(object):
             p = random.random()
             with torch.enable_grad():
                 Q = self.DQN(state[i].reshape(1, 1, -1))
+                if self.env.world.agents[i].at_city is not None:
+                    mask = [1 if e != -1 else 0 for e in self.env.world.agents[i].task[0]] * 2
+                    mask = torch.tensor(mask, device=self.device, requires_grad=False).reshape(1,-1)
+                    Q = mask * Q
                 q = Q.reshape(2, -1).max(1)
             qs.append(Q)
-            if p > eps_threshold:
+            if p > eps_threshold or (need_eps is False):
                 if q[0][0] > q[0][1]:
                     action = torch.tensor([0], device=self.device, requires_grad=False)
                     action = torch.cat((action, q[1][0].reshape(1, ).long()))
@@ -85,7 +89,7 @@ class Trainer(object):
         qs = torch.cat(qs)
         return actions, qs
 
-    def step(self):
+    def step(self, need_eps=True):
         self.env.steps_done += 1
         x = self.env.input().reshape(self.n_agents, -1).cuda(self.device)
         phi = []
@@ -94,6 +98,7 @@ class Trainer(object):
                 phi.append(self.Encoder(x[i]))
         # after encoding
         n = torch.cat(phi, dim=0).reshape(self.n_agents, -1)
+
         # state
         s = []
         for i in range(self.n_agents):
@@ -101,7 +106,7 @@ class Trainer(object):
             s.append(torch.cat((x[i], ni)))
         s = torch.cat(s).reshape(self.n_agents, -1)
         # epsilon-greedy
-        actions, Q = self.select_action(s)
+        actions, Q = self.select_action(s, need_eps=need_eps)
         # collect rewards
         rewards = self.env.step(actions)
         if rewards == -1:
@@ -118,7 +123,7 @@ class Trainer(object):
             ni = torch.cat((n_tp1[0:i], n_tp1[i + 1:])).reshape(-1)
             s_tp1.append(torch.cat((x_tp1[i], ni)))
         s_tp1 = torch.cat(s_tp1).reshape(self.n_agents, -1)
-        _, Q_next = self.select_action(s_tp1)
+        _, Q_next = self.select_action(s_tp1, need_eps=need_eps)
         # initial Transition tuple
         res = []
         for i in range(self.n_agents):
