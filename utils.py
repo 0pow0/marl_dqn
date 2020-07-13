@@ -10,6 +10,8 @@ def arg_parser():
     parser.add_argument("--city_path", help="coordination of cities", required=True, type=str)
     parser.add_argument("--reward_path", help="reward for each UAVs at all cities", required=True, type=str)
     parser.add_argument("--destination_path", help="distance from cities to destination", required=True, type=str)
+    parser.add_argument("--log_dir_path", type=str)
+    parser.add_argument("--tensor_board_path", type=str)
 
     # hyper parameters
     parser.add_argument("--len_encoder", help="output shape (1,L) of embedding network",
@@ -31,7 +33,6 @@ def arg_parser():
 
     # dirs
     parser.add_argument("--checkpoint_dir", help="checkpoint_dir", required=True, type=str)
-    parser.add_argument("--model_checkpoint_name", help="model checkpoint name", required=True, type=str)
 
     # optional
     # consuming for each uav in one time-step
@@ -40,10 +41,11 @@ def arg_parser():
     # the unit reward = reward / distance to measure performance
     parser.add_argument("--unit_reward", type=bool)
     parser.add_argument("--load_from_main_checkpoint", type=str)
-    parser.add_argument("--need_eval", dest='need_eval', action='store_true')
-    parser.add_argument("--split_ratio", type=float)
+    parser.add_argument("--encoder_checkpoint", type=str)
     parser.add_argument("--len_test_data", type=int)
     parser.add_argument("--test_start_idx", type=int)
+
+
 
     args, unknown = parser.parse_known_args()
     return args

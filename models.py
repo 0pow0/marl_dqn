@@ -42,7 +42,7 @@ class DQN(nn.Module):
         self.out3 = 128
         self.out4 = 256
 
-        self.ReLu = nn.ReLU()
+        self.ReLu = nn.ReLU(inplace=False)
 
         self.conv1 = nn.Conv1d(in_channels=1, out_channels=self.out1, kernel_size=2)
         self.conv2 = nn.Conv1d(in_channels=self.out1, out_channels=self.out2, kernel_size=3)
@@ -57,7 +57,7 @@ class DQN(nn.Module):
         self.convPool = nn.MaxPool1d(kernel_size=2, stride=2)
 
         self.flatten = nn.Flatten()
-        self.fc = nn.Linear((self.len_state - 1) // 2 * self.out1, 2 * self.M)
+        self.fc = nn.Linear((self.len_state - 15) // 4 * self.out4, 2 * self.M)
 
     def forward(self, x):
         # print(x.shape)
@@ -66,24 +66,22 @@ class DQN(nn.Module):
         x = self.convBN1(x)
         x = self.ReLu(x)
 
-        # x = self.conv2(x)
-        # x = self.convBN2(x)
-        # x = self.ReLu(x)
-        #
-        # x = self.convPool(x)
-        #
-        # x = self.conv3(x)
-        # x = self.convBN3(x)
-        # x = self.ReLu(x)
-        #
-        # x = self.conv4(x)
-        # x = self.convBn4(x)
-        # x = self.ReLu(x)
+        x = self.conv2(x)
+        x = self.convBN2(x)
+        x = self.ReLu(x)
 
         x = self.convPool(x)
 
-        x = self.flatten(x)
+        x = self.conv3(x)
+        x = self.convBN3(x)
+        x = self.ReLu(x)
 
+        x = self.conv4(x)
+        x = self.convBn4(x)
+        x = self.ReLu(x)
+
+        x = self.convPool(x)
+        x = self.flatten(x)
         x = self.fc(x)
 
         return x

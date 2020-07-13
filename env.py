@@ -26,6 +26,7 @@ class Env(gym.Env):
         self.remain_budget = self.get_budget()
         self.terminal = self.steps
         self.last_pick = [-1] * self.world.n_cities
+        self.last_pick_distance = [-1] * self.world.n_cities
 
     def step(self, action):
         self.remain_budget = self.get_budget()
@@ -33,24 +34,27 @@ class Env(gym.Env):
             self.close()
             # return -1 to stop iteration
             return -1
-        # measure distance if go to same city
+
         rewards = [0] * self.world.n_agents
+
         for i in range(self.world.n_agents):
-            if action[i][0] == 1 and self.last_pick[action[i][1]] != -1:
-                rewards[i] = -self.last_pick[action[i][1]]
-        # try:
-        for i in range(self.world.n_agents):
-            rewards[i] += self.world.agents[i].step(action[i], self.world.cities[action[i][1]],
-                                                    action[i][1], self.steps_done)
-        # except IndexError:
-        #     print(rewards, "\n")
-        #     print(self.world.agents, "\n")
-        #     print(action, "\n")
-        #     print(self.world.cities, "\n")
+            reward = self.world.agents[i].step(action[i], self.world.cities[action[i][1]],
+                                               action[i][1], self.steps_done)
+            if action[i][1] == 1:
+                if self.last_pick[action[i][1]] == -1:
+                    self.last_pick[action[i][1]] = reward
+                    self.last_pick_distance[action[i][1]] = self.world.agents[i].task[0][action[i][1]]
+                else:
+                    if self.world.agents[i].task[0][action[i][1]] <= self.last_pick_distance[action[i][1]]:
+                        reward = reward - self.last_pick[action[i][1]]
+                    else:
+                        reward = 0
+            rewards[i] = reward
 
         for i in range(len(rewards)):
             rewards[i] = torch.tensor([rewards[i]], dtype=torch.float)
 
+        # self.last_pick = [-1] * self.world.n_cities
         return rewards
 
     def reset(self):
@@ -61,8 +65,6 @@ class Env(gym.Env):
                            self.tasks, self.cities, self.rewards, self.destinations,
                            self.budget)
         self.remain_budget = self.get_budget()
-
-
 
     def render(self, mode='human'):
         pass
