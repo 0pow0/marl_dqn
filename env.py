@@ -38,15 +38,19 @@ class Env(gym.Env):
         rewards = [0] * self.world.n_agents
 
         for i in range(self.world.n_agents):
+            task = self.world.agents[i].task
             reward = self.world.agents[i].step(action[i], self.world.cities[action[i][1]],
                                                action[i][1], self.steps_done)
-            if action[i][1] == 1:
+            if action[i][0] == 1:
                 if self.last_pick[action[i][1]] == -1:
                     self.last_pick[action[i][1]] = reward
-                    self.last_pick_distance[action[i][1]] = self.world.agents[i].task[0][action[i][1]]
+                    self.last_pick_distance[action[i][1]] = task[0][action[i][1]]
                 else:
-                    if self.world.agents[i].task[0][action[i][1]] <= self.last_pick_distance[action[i][1]]:
-                        reward = reward - self.last_pick[action[i][1]]
+                    if task[0][action[i][1]] <= self.last_pick_distance[action[i][1]]:
+                        if reward - self.last_pick[action[i][1]] > 0:
+                            reward = reward - self.last_pick[action[i][1]]
+                        else:
+                            reward = 0
                     else:
                         reward = 0
             rewards[i] = reward
@@ -61,6 +65,7 @@ class Env(gym.Env):
         self.steps_done = 0
         self.terminal = self.steps
         self.last_pick = [-1] * self.world.n_cities
+        self.last_pick_distance = [-1] * self.world.n_cities
         self.world = World(self.n_agents, self.n_cities, self.steps, self.conn,
                            self.tasks, self.cities, self.rewards, self.destinations,
                            self.budget)

@@ -89,7 +89,8 @@ class Trainer(object):
                     if self.envs[i_env].world.agents[i].at_city is not None:
                         mask = [1 if e != -1 else 0 for e in self.envs[i_env].world.agents[i].task[0]] * 2
                         mask = torch.tensor(mask, device=self.device, requires_grad=False, dtype=torch.bool).reshape(1, -1)
-                        Q = mask * Q
+                        Q = [Q[0][i] if mask[0][i] else float('-inf') for i in range(len(mask[0]))]
+                        Q = torch.tensor(Q, device=self.device, dtype=torch.float).reshape(1, -1)
                     q = Q.reshape(2, -1).max(1)
 
                 if p > eps_threshold or (need_eps is False):
@@ -103,6 +104,7 @@ class Trainer(object):
                 else:
                     action = [random.choice([0, 1]), random.randint(0, self.n_cities - 1)]
                     actions_.append(torch.tensor(action, requires_grad=False))
+
             actions.append(actions_)
         return actions
 

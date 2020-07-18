@@ -63,6 +63,7 @@ def train():
                model_checkpoint_name="encoder",
                model=trainer.Encoder)
     min_loss = np.inf
+    best_reward = 0.0
     trainer.gen_env()
     for epoch in tqdm(range(args.epochs)):
         trainer.optimizer.zero_grad()
@@ -81,7 +82,11 @@ def train():
                        model_checkpoint_name="best_" + str(float(loss)),
                        model=trainer.DQN)
             min_loss = float(loss)
-
+        if rewards > best_reward:
+            save_model(checkpoint_dir=args.checkpoint_dir + "/" + str(datetime.date.today()),
+                       model_checkpoint_name="best_reward_" + str(float(loss)),
+                       model=trainer.DQN)
+            best_reward = rewards
         loss.backward()
         trainer.optimizer.step()
         # memory.clear(MEMORY_CAPACITY)
