@@ -47,10 +47,7 @@ class Env(gym.Env):
                     self.last_pick_distance[action[i][1]] = task[0][action[i][1]]
                 else:
                     if task[0][action[i][1]] <= self.last_pick_distance[action[i][1]]:
-                        if reward - self.last_pick[action[i][1]] > 0:
-                            reward = reward - self.last_pick[action[i][1]]
-                        else:
-                            reward = 0
+                        reward = reward - self.last_pick[action[i][1]]
                     else:
                         reward = 0
             rewards[i] = reward

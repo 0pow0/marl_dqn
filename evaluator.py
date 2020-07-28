@@ -13,12 +13,10 @@ class Evaluator(object):
         self.n_envs = args.n_envs
         self.device = device
         self.data_loader = data_loader
+        self.len_state = 1 + 2 * n_cities + 2 * args.steps * n_cities
 
-        self.Encoder = Encoder(K=args.steps, M=self.n_cities, L=args.len_encoder).to(self.device)
         self.DQN = DQN(N=self.n_agents, K=args.steps, L=args.len_encoder, M=n_cities).to(self.device)
-        self.Encoder.load_state_dict(torch.load(self.args.encoder_checkpoint, map_location=torch.device(device)))
         self.DQN.load_state_dict(torch.load(self.args.load_from_main_checkpoint, map_location=torch.device(device)))
-        self.Encoder.eval()
         self.DQN.eval()
 
         self.envs = []
@@ -36,16 +34,19 @@ class Evaluator(object):
     def step(self, env_idx):
         x = self.envs[env_idx].input().reshape(self.n_agents, 1, -1)
         x = x.to(self.device)
-        phi = self.Encoder(x)
+        # with encoder
+        # phi = self.Encoder(x)
+        # without encoder
+        phi = x
         phi_ = []
         for i in range(self.n_agents):
             if i == 0:
-                phi_.append(phi[1:].reshape(-1, 1, (self.n_agents-1) * self.args.len_encoder))
+                phi_.append(phi[1:].reshape(-1, 1, (self.n_agents-1) * self.len_state))
             elif i == self.n_agents-1:
-                phi_.append(phi[0:i].reshape(-1, 1, (self.n_agents-1) * self.args.len_encoder))
+                phi_.append(phi[0:i].reshape(-1, 1, (self.n_agents-1) * self.len_state))
             else:
                 phi_.append(torch.cat((phi[0:i], phi[i+1:]), dim=1)
-                            .reshape(-1, 1, (self.n_agents-1) * self.args.len_encoder))
+                            .reshape(-1, 1, (self.n_agents-1) * self.len_state))
         phi = torch.cat(phi_)
         s = torch.cat((x, phi), dim=-1)
         actions = []
@@ -55,7 +56,8 @@ class Evaluator(object):
                 if self.envs[env_idx].world.agents[i].at_city is not None:
                     mask = [1 if e != -1 else 0 for e in self.envs[env_idx].world.agents[i].task[0]] * 2
                     mask = torch.tensor(mask, device=self.device, requires_grad=False, dtype=torch.bool).reshape(1, -1)
-                    Q = mask * Q
+                    Q = [Q[0][i] if mask[0][i] else float('-inf') for i in range(len(mask[0]))]
+                    Q = torch.tensor(Q, device=self.device, dtype=torch.float).reshape(1, -1)
                 q = Q.reshape(2, -1).max(1)
             if q[0][0] > q[0][1]:
                 action = torch.tensor([0], device=self.device, requires_grad=False)

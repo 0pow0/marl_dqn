@@ -22,7 +22,7 @@ class Agent(object):
         self.at_city = at_city
 
     def step(self, action, go_city: City, city_idx, step):
-        if self.budget == 0:
+        if self.budget < self.task[0][city_idx]:
             return 0
         if self.task[0][city_idx] == -1:
             return 0
@@ -32,9 +32,12 @@ class Agent(object):
             reward = 0
             self.history[0][step][city_idx] = 1
         else:
-            reward = self.reward[0][city_idx].clone()
-            self.history[1][step][city_idx] = 1
-            self.reward[0][city_idx] = 0
+            if self.history[1][step][city_idx] != 1:
+                reward = self.reward[0][city_idx].clone()
+                self.history[1][step][city_idx] = 1
+                self.reward[0][city_idx] = -reward
+            else:
+                reward = self.reward[0][city_idx].clone()
         self.task = go_city.conn.reshape(1, -1)
         self.at_city = go_city
         return reward

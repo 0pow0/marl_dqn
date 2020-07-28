@@ -35,7 +35,10 @@ class DQN(nn.Module):
         self.L = L
         self.M = M
 
-        self.len_state = 1 + 2 * M + 2 * K * M + (N - 1) * L
+        # with encoder
+        # self.len_state = 1 + 2 * M + 2 * K * M + (N - 1) * L
+        # without encoder
+        self.len_state = 1 + 2 * M + 2 * K * M + (N - 1) * (1 + 2 * M + 2 * K * M)
 
         self.out1 = 32
         self.out2 = 64

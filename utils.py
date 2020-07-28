@@ -45,7 +45,5 @@ def arg_parser():
     parser.add_argument("--len_test_data", type=int)
     parser.add_argument("--test_start_idx", type=int)
 
-
-
     args, unknown = parser.parse_known_args()
     return args

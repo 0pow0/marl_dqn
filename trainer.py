@@ -15,6 +15,7 @@ class Trainer(object):
         self.envs = []
         self.device = device
         self.steps_done = 0
+        self.len_state = 1 + 2 * n_cities + 2 * args.steps * n_cities
 
         self.args = args
         self.Encoder = Encoder(K=args.steps, M=self.n_cities, L=args.len_encoder).to(self.device)
@@ -123,15 +124,19 @@ class Trainer(object):
         x = self.input()
         # phi (n_envs, n_agents, (n_agents-1) * encode_len)
         x = x.to(device=self.device)
-        phi = self.Encoder(x)
+        # with encoder
+        # phi = self.Encoder(x)
+        # without encoder
+        phi = x
         phi_ = []
         for i in range(self.n_agents):
             if i == 0:
-                phi_.append(phi[:, 1:].reshape(-1, 1, (self.n_agents-1) * self.args.len_encoder))
+                phi_.append(phi[:, 1:].reshape(-1, 1, (self.n_agents-1) * self.len_state))
             elif i == self.n_agents-1:
-                phi_.append(phi[:, 0:i].reshape(-1, 1, (self.n_agents-1) * self.args.len_encoder))
+                phi_.append(phi[:, 0:i].reshape(-1, 1, (self.n_agents-1) * self.len_state))
             else:
-                phi_.append(torch.cat((phi[:, 0:i], phi[:, i+1:]), dim=1).reshape(-1, 1, (self.n_agents-1) * self.args.len_encoder))
+                phi_.append(torch.cat((phi[:, 0:i], phi[:, i+1:]), dim=1)
+                            .reshape(-1, 1, (self.n_agents-1) * self.len_state))
         phi = torch.cat(phi_, dim=1)
         # CUDA s (n_envs, n_agents, 1+2*n_cities+n_cities+2*steps*n_cities + (n_agents-1) * encode_len)
         s = torch.cat((x, phi), dim=-1)
@@ -150,17 +155,21 @@ class Trainer(object):
         # state_{t+1}
         x_tp1 = self.input()
         x_tp1 = x_tp1.to(device=self.device)
-        phi_tp1 = self.Encoder(x_tp1)
+        # with encoder
+        # phi_tp1 = self.Encoder(x_tp1)
+        # without encoder
+        phi_tp1 = x_tp1
+
         phi_tp1_ = []
         for i in range(self.n_agents):
             with torch.no_grad():
                 if i == 0:
-                    phi_tp1_.append(phi_tp1[:, 1:].reshape(-1, 1, (self.n_agents - 1) * self.args.len_encoder))
+                    phi_tp1_.append(phi_tp1[:, 1:].reshape(-1, 1, (self.n_agents - 1) * self.len_state))
                 elif i == self.n_agents - 1:
-                    phi_tp1_.append(phi_tp1[:, 0:i].reshape(-1, 1, (self.n_agents - 1) * self.args.len_encoder))
+                    phi_tp1_.append(phi_tp1[:, 0:i].reshape(-1, 1, (self.n_agents - 1) * self.len_state))
                 else:
                     phi_tp1_.append(torch.cat((phi_tp1[:, 0:i], phi_tp1[:, i + 1:]), dim=1).reshape(-1, 1, (
-                                self.n_agents - 1) * self.args.len_encoder))
+                                self.n_agents - 1) * self.len_state))
         phi_tp1 = torch.cat(phi_tp1_, dim=1)
         s_tp1 = torch.cat((x_tp1, phi_tp1), dim=-1)
         s = s.detach().cpu()
