@@ -23,14 +23,12 @@ class Env(gym.Env):
         self.world = World(self.n_agents, self.n_cities, self.steps, self.conn,
                            self.tasks, self.cities, self.rewards, self.destinations,
                            self.budget)
-        self.remain_budget = self.get_budget()
         self.terminal = self.steps
         self.last_pick = [-1] * self.world.n_cities
         self.last_pick_distance = [-1] * self.world.n_cities
 
     def step(self, action):
-        self.remain_budget = self.get_budget()
-        if not self.check():
+        if self.steps_done >= self.terminal:
             self.close()
             # return -1 to stop iteration
             return -1
@@ -38,15 +36,18 @@ class Env(gym.Env):
         rewards = [0] * self.world.n_agents
 
         for i in range(self.world.n_agents):
-            task = self.world.agents[i].task
+            # reward could be:
+            # 0, (action=visit but not pick)
+            # >0 (no penalty from agent if agent never visited that before)
+            # <0 (get penalty from agent if agent visit same city that this agent has visited before)
             reward = self.world.agents[i].step(action[i], self.world.cities[action[i][1]],
                                                action[i][1], self.steps_done)
             if action[i][0] == 1:
                 if self.last_pick[action[i][1]] == -1:
                     self.last_pick[action[i][1]] = reward
-                    self.last_pick_distance[action[i][1]] = task[0][action[i][1]]
-                else:
-                    if task[0][action[i][1]] <= self.last_pick_distance[action[i][1]]:
+                    self.last_pick_distance[action[i][1]] = self.world.agents[i].distance
+                elif reward > 0:
+                    if self.world.agents[i].distance <= self.last_pick_distance[action[i][1]]:
                         reward = reward - self.last_pick[action[i][1]]
                     else:
                         reward = 0
@@ -54,8 +55,7 @@ class Env(gym.Env):
 
         for i in range(len(rewards)):
             rewards[i] = torch.tensor([rewards[i]], dtype=torch.float)
-
-        # self.last_pick = [-1] * self.world.n_cities
+        self.steps_done += 1
         return rewards
 
     def reset(self):
@@ -66,20 +66,9 @@ class Env(gym.Env):
         self.world = World(self.n_agents, self.n_cities, self.steps, self.conn,
                            self.tasks, self.cities, self.rewards, self.destinations,
                            self.budget)
-        self.remain_budget = self.get_budget()
 
     def render(self, mode='human'):
         pass
-
-    def get_budget(self):
-        budget = 0
-        for uav in self.world.agents:
-            budget += uav.budget
-        return budget
-
-    def check(self):
-        return True if self.steps_done < self.terminal and self.remain_budget != 0 \
-            else False
 
     def input(self):
         x = []

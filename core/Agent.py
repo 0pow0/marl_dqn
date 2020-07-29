@@ -18,16 +18,17 @@ class Agent(object):
         self.history = history
         # (N-1, L)
         self.partner = None
-
         self.at_city = at_city
+        self.distance = 0
 
+    """
+    action guarantee city are reachable and within enough budget
+    :return reward, could be 0, reward, -reward(penalty)
+    """
     def step(self, action, go_city: City, city_idx, step):
-        if self.budget < self.task[0][city_idx]:
-            return 0
-        if self.task[0][city_idx] == -1:
-            return 0
 
         self.budget -= self.task[0][city_idx]
+        self.distance += self.task[0][city_idx]
         if action[0] == 0:
             reward = 0
             self.history[0][step][city_idx] = 1

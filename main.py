@@ -59,9 +59,6 @@ def train():
     trainer = Trainer(args=args, n_agents=args.n_agents, n_cities=args.n_cities,
                       device=DEVICE, data_loader=train_data_loader)
 
-    save_model(checkpoint_dir=args.checkpoint_dir + "/" + str(datetime.date.today()),
-               model_checkpoint_name="encoder",
-               model=trainer.Encoder)
     min_loss = np.inf
     best_reward = 0.0
     trainer.gen_env()
@@ -97,5 +94,5 @@ def train():
 
 
 if __name__ == '__main__':
-    evl()
+    train()
 

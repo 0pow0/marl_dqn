@@ -5,6 +5,7 @@ from env import Env
 import torch
 import torch.nn as nn
 import torch.optim
+import numpy as np
 from memory import Transition
 
 
@@ -85,10 +86,13 @@ class Trainer(object):
 
             for i in range(self.n_agents):
                 p = random.random()
+                cur_agent = self.envs[i_env].world.agents[i]
                 with torch.no_grad():
                     Q = self.DQN(state[i_env][i].reshape(1, 1, -1))
-                    if self.envs[i_env].world.agents[i].at_city is not None:
-                        mask = [1 if e != -1 else 0 for e in self.envs[i_env].world.agents[i].task[0]] * 2
+                    if cur_agent.at_city is not None:
+                        mask_conn = np.array([1 if e != -1 else 0 for e in cur_agent.task[0]] * 2)
+                        mask_budget = np.array([1 if cur_agent.budget >= e else 0 for e in cur_agent.task[0]] * 2)
+                        mask = mask_conn & mask_budget
                         mask = torch.tensor(mask, device=self.device, requires_grad=False, dtype=torch.bool).reshape(1, -1)
                         Q = [Q[0][i] if mask[0][i] else float('-inf') for i in range(len(mask[0]))]
                         Q = torch.tensor(Q, device=self.device, dtype=torch.float).reshape(1, -1)
@@ -117,9 +121,6 @@ class Trainer(object):
         return ipts
 
     def step(self, need_eps=True):
-        self.steps_done += 1
-        for env in self.envs:
-            env.steps_done += 1
         # x (n_envs, n_agents, 1+2*n_cities+n_cities+2*steps*n_cities)
         x = self.input()
         # phi (n_envs, n_agents, (n_agents-1) * encode_len)
@@ -182,4 +183,5 @@ class Trainer(object):
                                       reward=rewards[i][j].reshape(1), ID=self.envs[i].world.agents[j].ID,
                                       from_=self.envs[i].world.agents[j].at_city.ID
                                       if self.envs[i].world.agents[j].at_city is not None else -1))
+        self.steps_done += 1
         return res
