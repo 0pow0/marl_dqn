@@ -2,6 +2,14 @@
 
 
 
+Jul 29th
+
+Fixed the problem that when searching for visited cities in history for agent, only search for one certain timestep.
+
+---
+
+
+
 Weekly update: Jul 28th
 
 - Distance is accumulated from start to each step, and env will allocate reward back based on this distance.
