@@ -25,6 +25,7 @@ class Agent(object):
     action guarantee city are reachable and within enough budget
     :return reward, could be 0, reward, -reward(penalty)
     """
+
     def step(self, action, go_city: City, city_idx, step):
 
         self.budget -= self.task[0][city_idx]
@@ -33,7 +34,11 @@ class Agent(object):
             reward = 0
             self.history[0][step][city_idx] = 1
         else:
-            if self.history[1][step][city_idx] != 1:
+            visited = False
+            for i in range(step - 1):
+                if self.history[1][i][city_idx] == 1:
+                    visited = True
+            if not visited:
                 reward = self.reward[0][city_idx].clone()
                 self.history[1][step][city_idx] = 1
                 self.reward[0][city_idx] = -reward
@@ -47,7 +52,3 @@ class Agent(object):
         input_ = [self.budget.flatten(), self.task.flatten(),
                   self.reward.flatten(), self.history.flatten()]
         return input_
-
-
-
-
