@@ -20,7 +20,7 @@ class World(object):
 
         for i in range(self.n_agents):
             self.agents.append(Agent(i, tasks[0][i], rewards[0][i], n_cities,
-                                     n_agents, torch.zeros((2, steps, n_cities)),
+                                     n_agents, torch.full((2, n_cities), 0),
                                      budget=budget))
 
         for i in range(self.n_cities):

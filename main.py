@@ -3,21 +3,24 @@ from utils import arg_parser
 from data_loader import MADataset
 from torch.utils.data import DataLoader
 from trainer import Trainer
-from evaluator import Evaluator
+from eval.evaluator import Evaluator
 from tqdm import tqdm
 from memory import ReplayMemory
-from torch.utils.tensorboard import SummaryWriter
 import datetime
 import numpy as np
 import os
+import sys
+from torch.utils.tensorboard import SummaryWriter
 
 SEED = 0
 DEVICE = 0
 MEMORY_CAPACITY = 30000
+TARGET_DQN_UPDATE_PERIOD = 10
 # os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 torch.manual_seed(SEED)
 args = arg_parser()
+writer = SummaryWriter()
 
 
 def save_model(checkpoint_dir, model_checkpoint_name, model):
@@ -49,6 +52,65 @@ def evl():
             logger.write("\n sum reward: {0}\n".format(sum_rewards))
 
 
+def train_detail_log(log_output_path):
+    dataset = MADataset(args.len_dataset, args.connectivity_path, args.task_path,
+                        args.city_path, args.reward_path, args.destination_path)
+    memory = ReplayMemory(MEMORY_CAPACITY)
+    train_data_loader = DataLoader(dataset)
+    trainer = Trainer(args=args, n_agents=args.n_agents, n_cities=args.n_cities,
+                      device=DEVICE, data_loader=train_data_loader)
+    trainer.gen_env()
+    min_loss = np.inf
+    example_state = trainer.envs[0].input().reshape(1, -1)
+    with open(log_output_path, "w+") as logger:
+        for epoch in tqdm(range(args.epochs)):
+            trainer.adam.zero_grad()
+            epoch_reward = 0.0
+            for step in range(args.steps):
+                transitions = trainer.step()
+                for agent in range(args.n_agents):
+                    Q = trainer.DQN(transitions[agent].state.to(DEVICE))\
+                        .detach().cpu().gather(0, transitions[agent].action[0][1])
+                    if transitions[agent].reward[0][0] != 1:
+                        Q_target = 0.0
+                    else:
+                        Q_target = trainer.DQN(transitions[agent].next_state.to(DEVICE)).detach().cpu().max() \
+                                   * args.gamma + transitions[agent].reward[0][1]
+                    logger.write("\n({0}/{1}/{2}): ACTION: {3} REWARD: {4} Q: {5} Q*: {6}"
+                                 .format(epoch, step, agent, transitions[agent].action, transitions[agent].reward, Q, Q_target))
+                    logger.write("\n Budget: {0} "
+                                 "Distance: {1} "
+                                 "Task: {2} "
+                                 "Reward: {3} "
+                                 "History: {4}".format(transitions[agent].state[0][0],
+                                                       transitions[agent].state[0][1],
+                                                       transitions[agent].state[0][2: 2+args.n_cities],
+                                                       transitions[agent].state[0][2 + args.n_cities:
+                                                                                   2 + args.n_cities * 2],
+                                                       transitions[agent].state[0][2 + args.n_cities * 2:
+                                                                                   2 + args.n_cities * 2 +
+                                                                                   2 * args.n_cities]))
+                    if step == 5 and agent == 0:
+                        writer.add_scalars("Q and Q*", {"Q": Q, "Q*": Q_target}, epoch)
+                epoch_reward += sum([t.reward[0][1] for t in transitions])
+                memory.push_all(transitions)
+            trainer.reset()
+            if len(memory.memory) < args.batch_size:
+                continue
+            samples = memory.sample(args.batch_size)
+            loss = trainer.calc_loss(samples)
+            if loss < min_loss and epoch > 10:
+                save_model(checkpoint_dir=args.checkpoint_dir + "/" + str(datetime.date.today()),
+                           model_checkpoint_name="best_" + str(float(torch.mean(loss))),
+                           model=trainer.DQN)
+                min_loss = float(loss)
+            writer.add_scalar("Loss", loss, epoch)
+            writer.add_scalar("Epoch Reward", epoch_reward, epoch)
+            loss.backward()
+            trainer.adam.step()
+            print("\n Epoch: {0} reward: {1} loss: {2}\n".format(epoch, epoch_reward, loss))
+
+
 def train():
     dataset = MADataset(args.len_dataset, args.connectivity_path, args.task_path,
                         args.city_path, args.reward_path, args.destination_path)
@@ -60,10 +122,10 @@ def train():
                       device=DEVICE, data_loader=train_data_loader)
 
     min_loss = np.inf
-    best_reward = 0.0
     trainer.gen_env()
+    example_state = trainer.envs[0].input().reshape(1, -1)
     for epoch in tqdm(range(args.epochs)):
-        trainer.optimizer.zero_grad()
+        trainer.adam.zero_grad()
         rewards = 0.0
         for step in range(args.steps):
             transitions = trainer.step()
@@ -76,23 +138,25 @@ def train():
         loss = trainer.calc_loss(samples)
         if loss < min_loss and epoch > 10:
             save_model(checkpoint_dir=args.checkpoint_dir + "/" + str(datetime.date.today()),
-                       model_checkpoint_name="best_" + str(float(loss)),
+                       model_checkpoint_name="best_" + str(float(torch.mean(loss))),
                        model=trainer.DQN)
             min_loss = float(loss)
-        if rewards > best_reward:
-            save_model(checkpoint_dir=args.checkpoint_dir + "/" + str(datetime.date.today()),
-                       model_checkpoint_name="best_reward_" + str(float(loss)),
-                       model=trainer.DQN)
-            best_reward = rewards
-        loss.backward()
-        trainer.optimizer.step()
-        # memory.clear(MEMORY_CAPACITY)
-        print("\n Epoch: {0} reward: {1} loss: {2}\n".format(epoch, rewards, loss.float()))
 
-        if epoch % 10 == 0 and epoch != 0:
+        loss.backward()
+        # Adam
+        trainer.adam.step()
+        # RMSProp
+        # trainer.optimizer.step()
+        writer.add_scalar("Loss", loss, epoch)
+        writer.add_scalar("Q", trainer.DQN(example_state.to(DEVICE)).max().detach().cpu(), epoch)
+        if epoch % TARGET_DQN_UPDATE_PERIOD == 0:
             trainer.target_DQN.load_state_dict(trainer.DQN.state_dict())
+
+        print("\n Epoch: {0} reward: {1} loss: {2}\n".format(epoch, rewards, loss))
 
 
 if __name__ == '__main__':
-    train()
+    # train_detail_log(sys.argv[1])
+    evl()
+
 

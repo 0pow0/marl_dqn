@@ -41,7 +41,9 @@ class MADataset(Dataset):
 
     def load(self):
         for i in range(self.n):
-            self.conn.append(np.load(self.conn_path + "connectivity_" + str(i) + ".npy"))
+            conn = np.load(self.conn_path + "connectivity_" + str(i) + ".npy")
+            # conn[conn == -1] = 1000
+            self.conn.append(conn)
             self.tasks.append(np.load(self.task_path + "agent_all_" + str(i) + ".npy"))
             self.cities.append(np.load(self.cities_path + "task_" + str(i) + ".npy"))
             self.rewards.append(np.load(self.rewards_path + "reward_" + str(i) + ".npy"))

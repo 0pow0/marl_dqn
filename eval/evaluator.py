@@ -2,6 +2,7 @@ import datetime
 import os
 from models import DQN, Encoder
 from env import Env
+import numpy as np
 import torch
 
 
@@ -32,32 +33,30 @@ class Evaluator(object):
                                  budget=self.args.budget))
 
     def step(self, env_idx):
-        x = self.envs[env_idx].input().reshape(self.n_agents, 1, -1)
-        x = x.to(self.device)
-        # with encoder
-        # phi = self.Encoder(x)
-        # without encoder
-        phi = x
-        phi_ = []
-        for i in range(self.n_agents):
-            if i == 0:
-                phi_.append(phi[1:].reshape(-1, 1, (self.n_agents-1) * self.len_state))
-            elif i == self.n_agents-1:
-                phi_.append(phi[0:i].reshape(-1, 1, (self.n_agents-1) * self.len_state))
-            else:
-                phi_.append(torch.cat((phi[0:i], phi[i+1:]), dim=1)
-                            .reshape(-1, 1, (self.n_agents-1) * self.len_state))
-        phi = torch.cat(phi_)
-        s = torch.cat((x, phi), dim=-1)
         actions = []
         for i in range(self.n_agents):
+            state = self.envs[env_idx].input().reshape(self.n_agents, -1)
+            tmp_ = torch.cat([state[i].reshape(-1), state[0:i].reshape(-1), state[i + 1:].reshape(-1)])
+            state = tmp_.reshape(1, -1).to(self.device)
+            cur_agent = self.envs[env_idx].world.agents[i]
+            reachable_cities = {}
+            for city in self.envs[env_idx].world.cities:
+                if cur_agent.budget >= cur_agent.task[0][city.ID] != -1:
+                    reachable_cities[city.ID] = 1
+            if len(reachable_cities) == 0:
+                actions.append(torch.tensor([-1, -1]))
+                continue
             with torch.no_grad():
-                Q = self.DQN(s[i].reshape(1, 1, -1))
-                if self.envs[env_idx].world.agents[i].at_city is not None:
-                    mask = [1 if e != -1 else 0 for e in self.envs[env_idx].world.agents[i].task[0]] * 2
-                    mask = torch.tensor(mask, device=self.device, requires_grad=False, dtype=torch.bool).reshape(1, -1)
-                    Q = [Q[0][i] if mask[0][i] else float('-inf') for i in range(len(mask[0]))]
-                    Q = torch.tensor(Q, device=self.device, dtype=torch.float).reshape(1, -1)
+                Q = self.DQN(state.reshape(1, 1, -1)).reshape(1, -1)
+                # tmp = [0] * (self.n_cities * 2)
+                # for city_idx in range(self.n_cities):
+                #     if city_idx in reachable_cities.keys():
+                #         tmp[city_idx] = Q[0][city_idx]
+                #         tmp[city_idx + 20] = Q[0][city_idx + 20]
+                #     else:
+                #         tmp[city_idx] = float('-inf')
+                #         tmp[city_idx + 20] = float('-inf')
+                # Q = torch.tensor(tmp, device=self.device, dtype=torch.float).reshape(1, -1)
                 q = Q.reshape(2, -1).max(1)
             if q[0][0] > q[0][1]:
                 action = torch.tensor([0], device=self.device, requires_grad=False)
@@ -69,7 +68,7 @@ class Evaluator(object):
         froms = [self.envs[env_idx].world.agents[j].at_city.ID
                  if self.envs[env_idx].world.agents[j].at_city is not None else -1
                  for j in range(self.n_agents)]
-        rewards = self.envs[env_idx].step(actions)
+        rewards = self.envs[env_idx].step_eval(actions)
         if rewards == -1:
             rewards = torch.cat([torch.tensor(0.0).reshape(1)]*self.n_agents)
         else:

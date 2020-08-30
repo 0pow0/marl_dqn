@@ -2,6 +2,19 @@
 
 
 
+Aug 16th 
+
+Summary for last week:
+
+- REWARD problem in test Environment
+- Add accumulated distance into state
+- History only record go to and picked cities
+- TEST on 1 env, record all training detail( state, reward, action, Q, $Q^*$)
+
+---
+
+
+
 Jul 29th
 
 Fixed the problem that when searching for visited cities in history for agent, only search for one certain timestep.
