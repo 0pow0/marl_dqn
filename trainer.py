@@ -25,8 +25,6 @@ class Trainer(object):
         self.target_DQN.load_state_dict(self.DQN.state_dict())
         self.target_DQN.eval()
 
-
-
         self.data_loader = data_loader
         self.iter_data = iter(data_loader)
         self.n_envs = args.n_envs
@@ -149,7 +147,9 @@ class Trainer(object):
                 if reward[0] == -1:
                     reward = (-1, torch.tensor(0.0).reshape(1))
 
-                next_state = self.envs[i_env].input().reshape(1, -1)
+                next_state = self.envs[i_env].input().reshape(self.n_agents, -1)
+                tmp_ = torch.cat([next_state[i].reshape(-1), next_state[0:i].reshape(-1), next_state[i + 1:].reshape(-1)])
+                next_state = tmp_.reshape(1, -1).to(self.device)
 
                 states_.append(state.detach().cpu())
                 rewards_.append(torch.tensor(reward, dtype=torch.float).reshape(1, 2))

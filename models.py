@@ -20,6 +20,58 @@ class Encoder(nn.Module):
         return x
 
 
+class testDQN(nn.Module):
+    def __init__(self, ipt_len, n_cities):
+        super(testDQN, self).__init__()
+        self.fc = nn.Linear(ipt_len, n_cities)
+
+    def forward(self, x):
+        x = self.fc(x)
+        return x
+
+
+class testDQN2(nn.Module):
+    def __init__(self, ipt_len):
+        super(testDQN2, self).__init__()
+        self.relu = nn.ReLU(inplace=True)
+        self.fc1 = nn.Linear(ipt_len, 32)
+        self.fc2 = nn.Linear(32, 64)
+        self.fc3 = nn.Linear(64, 128)
+        self.fc4 = nn.Linear(128, 64)
+        self.fc5 = nn.Linear(64, 32)
+        self.fc6 = nn.Linear(32, 1)
+
+        self.BN1 = nn.BatchNorm1d(32)
+        self.BN2 = nn.BatchNorm1d(64)
+        self.BN3 = nn.BatchNorm1d(128)
+
+    def forward(self, x):
+        x = self.fc1(x)
+        x = self.BN1(x)
+        self.relu(x)
+
+        x = self.fc2(x)
+        x = self.BN2(x)
+        self.relu(x)
+
+        x = self.fc3(x)
+        x = self.BN3(x)
+        self.relu(x)
+
+        x = self.fc4(x)
+        x = self.BN2(x)
+        self.relu(x)
+
+        x = self.fc5(x)
+        x = self.BN1(x)
+        self.relu(x)
+
+        x = self.fc6(x)
+        self.relu(x)
+
+        return x
+
+
 class DQN(nn.Module):
     """
     :param N: amount of uav

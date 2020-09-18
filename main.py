@@ -156,7 +156,7 @@ def train():
 
 
 if __name__ == '__main__':
-    # train_detail_log(sys.argv[1])
-    evl()
+    train_detail_log(sys.argv[1])
+    # evl()
 
 

@@ -14,7 +14,7 @@ class Agent(object):
         self.task = task.reshape(1, -1)
         # (1, M)
         self.reward = reward.reshape(1, -1)
-        # (2, K, M)
+        # (2, M)
         self.history = history
         # (N-1, L)
         self.partner = None
