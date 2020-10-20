@@ -1,4 +1,12 @@
 import argparse
+from data_loader import MADataset
+from torch.utils.data import DataLoader
+
+
+def load_data(len_data, connectivity_path, task_path, city_path, reward_path, destination_path):
+    data_set = MADataset(len_data, connectivity_path, task_path, city_path, reward_path, destination_path)
+    data_loader = DataLoader(data_set)
+    return data_loader
 
 
 def arg_parser():

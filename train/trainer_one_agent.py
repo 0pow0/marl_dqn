@@ -22,8 +22,8 @@ DEVICE = 0
 
 def testing_ground(training_detail_log_path):
     best_loss = np.inf
-    writer = SummaryWriter()
     args = arg_parser()
+    writer = SummaryWriter(args.checkpoint_dir)
     dataset = MADataset(args.len_dataset, args.connectivity_path, args.task_path,
                         args.city_path, args.reward_path, args.destination_path)
     dataloader = DataLoader(dataset)
@@ -120,6 +120,7 @@ class OneEnvTrainer(object):
         self.n_agents = args.n_agents
         self.n_cities = args.n_cities
         self.dataloader = list(dataloader)
+        self.initBudget = args.budget
         self.env = Env(n_agents=self.n_agents, n_cities=self.n_cities, steps=self.args.steps,
                        conn=self.dataloader[0]["conn"], tasks=self.dataloader[0]["tasks"],
                        cities=self.dataloader[0]["cities"], rewards=self.dataloader[0]["rewards"],
@@ -150,7 +151,9 @@ class OneEnvTrainer(object):
         values = self.DQN(batch_states)
         batch_next_states = batch_next_states.squeeze().reshape(-1, 4)
         next_state_values = self.DQN(batch_next_states).reshape(self.args.batch_size, self.n_cities, -1).max(1)[0]
-        expected_values = [next_state_values[i] * self.GAMMA + batch_rewards[i][1]
+        expected_values = [next_state_values[i] * self.GAMMA *
+                           ((batch_states[i][0] - batch_states[i][2]) / self.initBudget)
+                           + batch_rewards[i][1]
                            if batch_rewards[i][0] != -1
                            else torch.tensor(0.0).reshape(1).to(self.device)
                            for i in range(self.args.batch_size)]

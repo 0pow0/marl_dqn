@@ -1,4 +1,5 @@
-/home/rzuo02/data/mas_dqn/log/no_encoder/exp18/detailed_taining.log
+/home/rzuo02/data/mas_dqn/test_model_design_on_env0_agent0/exp10/detailed_taining.log
+/home/rzuo02/data/mas_dqn/test_model_design_on_env0_agent0/exp10/evaluation_agent0.log
 --connectivity_path
 /home/rzuo02/data/mas_dqn/all/numpy_data/connectivity/
 --task_path
@@ -9,8 +10,6 @@
 /home/rzuo02/data/mas_dqn/all/numpy_data/reward/
 --destination_path
 /home/rzuo02/data/mas_dqn/all/numpy_data/destination/
---len_encoder
-100
 --steps
 10
 --epochs
@@ -26,7 +25,7 @@
 --gamma
 0.9
 --lr
-0.001
+0.0001
 --batch_size
 64
 --budget
@@ -36,6 +35,8 @@
 --eps_end
 0.05
 --eps_decay
-1000
+20000
 --checkpoint_dir
-/home/rzuo02/data/mas_dqn/check_point/no_encoder/exp18
+/home/rzuo02/data/mas_dqn/test_model_design_on_env0_agent0/exp10/checkpoint
+--load_from_main_checkpoint
+/home/rzuo02/data/mas_dqn/test_model_design_on_env0_agent0/exp10/checkpoint/0.3911292552947998
