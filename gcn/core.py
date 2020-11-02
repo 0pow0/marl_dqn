@@ -1,18 +1,31 @@
 from gcn.vGraph import vGraph
+import torch
 
 
 class Agent(object):
-    def __init__(self, init_budget, pos=-1):
+    def __init__(self, init_budget, cost, pos=-1):
         self.budget = init_budget
         self.pos = pos
+        self.cost = cost
         self.reward = 0.0
         self.path = []
 
     def step(self, **action):
-        self.budget -= action["cost"]
+        if self.budget < self.cost[action["city"]] or self.cost[action["city"]] == -1:
+            return -1
+        self.budget -= self.cost[action["city"]]
         self.pos = action["city"]
         self.reward += action["reward"]
         self.path.append(action["city"])
+        self.cost = action["cost"]
+        return 1
+
+    def state(self):
+        state = torch.full((self.cost.shape[0], 1), self.budget)
+        self.cost[self.cost == -1.0] = 100.0
+        state = state.sub(self.cost.reshape(-1, 1))
+        # state = torch.cat((state, self.cost.reshape(-1, 1).float()), dim=1)
+        return state
 
 
 class Env(object):
@@ -25,15 +38,24 @@ class Env(object):
         self.data = data
         self.agents = []
         for i in range(n_agents):
-            self.agents.append(Agent(self.budget))
+            self.agents.append(Agent(self.budget, data["tasks"][i]))
         self.G = vGraph(self.n_cities, data["conn"], data["rewards"])
 
     def step(self, actions):
+        res = []
         for i in range(self.n_agents):
-            self.agents[i].step(actions[i])
+            res.append(self.step_one_agent(i, actions[i]))
+        return res
 
     def step_one_agent(self, agent_idx, action):
-        self.agents[agent_idx].step(action)
+        conn = self.G.vertexes[action].neighbors
+        reward = self.G.vertexes[action].features[agent_idx]
+        rtn = self.agents[agent_idx].step(cost=conn, reward=reward, city=action)
+        if rtn == 1:
+            self.G.vertexes[action].features[agent_idx] = 0
+            return reward
+        else:
+            return -1
 
     def reset(self):
         self.rounds = 0
