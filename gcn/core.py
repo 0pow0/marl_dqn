@@ -1,5 +1,6 @@
 from gcn.vGraph import vGraph
 import torch
+from copy import deepcopy
 
 
 class Agent(object):
@@ -25,7 +26,7 @@ class Agent(object):
         self.cost[self.cost == -1.0] = 100.0
         state = state.sub(self.cost.reshape(-1, 1))
         # state = torch.cat((state, self.cost.reshape(-1, 1).float()), dim=1)
-        return state
+        return state, self.budget
 
 
 class Env(object):
@@ -38,8 +39,8 @@ class Env(object):
         self.data = data
         self.agents = []
         for i in range(n_agents):
-            self.agents.append(Agent(self.budget, data["tasks"][i]))
-        self.G = vGraph(self.n_cities, data["conn"], data["rewards"])
+            self.agents.append(Agent(self.budget, deepcopy(data["tasks"][i])))
+        self.G = vGraph(self.n_cities, deepcopy(data["conn"]), deepcopy(data["rewards"]))
 
     def step(self, actions):
         res = []
@@ -52,13 +53,14 @@ class Env(object):
         reward = self.G.vertexes[action].features[agent_idx]
         rtn = self.agents[agent_idx].step(cost=conn, reward=reward, city=action)
         if rtn == 1:
-            self.G.vertexes[action].features[agent_idx] = 0
+            reward = reward.clone()
+            self.G.vertexes[action].features.fill_(0.0)
             return reward
         else:
             return -1
 
     def reset(self):
         self.rounds = 0
-        self.G = vGraph(self.n_cities, self.data["conn"], self.data["rewards"])
+        self.G = vGraph(self.n_cities, deepcopy(self.data["conn"]), deepcopy(self.data["rewards"]))
         for i in range(self.n_agents):
-            self.agents.append(Agent(self.budget))
+            self.agents.append(Agent(self.budget, deepcopy(self.data["tasks"][i])))
